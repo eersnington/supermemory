@@ -1,15 +1,38 @@
 import posthog from "posthog-js"
+import type { BrainStep } from "@/components/onboarding-brain/types"
 
-export type OnboardingStep = "profile_input" | "processing" | "done" | "error"
-export type OnboardingSource = "x" | "linkedin" | "resume"
-
-// Helper function to safely capture events
 const safeCapture = (
 	eventName: string,
 	properties?: Record<string, unknown>,
 ) => {
 	if (posthog.__loaded) {
 		posthog.capture(eventName, properties)
+	}
+}
+
+// Runs fn once PostHog has finished init, so events fired on a cold page load
+// (before PostHogProvider's effect runs) aren't dropped. Returns a cleanup.
+export const onAnalyticsReady = (fn: () => void) => {
+	if (posthog.__loaded) {
+		fn()
+		return () => {}
+	}
+	let cancelled = false
+	const timer = setInterval(() => {
+		if (cancelled) return
+		if (posthog.__loaded) {
+			clearInterval(timer)
+			fn()
+		}
+	}, 200)
+	const stop = setTimeout(() => {
+		cancelled = true
+		clearInterval(timer)
+	}, 10000)
+	return () => {
+		cancelled = true
+		clearInterval(timer)
+		clearTimeout(stop)
 	}
 }
 
@@ -82,16 +105,45 @@ export const analytics = {
 	addDocumentModalOpened: () => safeCapture("add_document_modal_opened"),
 
 	// onboarding analytics
+	onboardingStarted: (props: { mode: string; entry_step: BrainStep }) =>
+		safeCapture("onboarding_started", props),
+
 	onboardingStepViewed: (props: {
-		step: OnboardingStep
+		step: BrainStep
+		index: number
 		trigger: "user" | "auto"
 	}) => safeCapture("onboarding_step_viewed", props),
 
-	onboardingProfileSubmitted: (props: { source: OnboardingSource }) =>
-		safeCapture("onboarding_profile_submitted", props),
+	onboardingStepCompleted: (props: { step: BrainStep; index: number }) =>
+		safeCapture("onboarding_step_completed", props),
+
+	onboardingModeSelected: (props: { mode: string }) =>
+		safeCapture("onboarding_mode_selected", props),
+
+	onboardingWorkspaceCreated: (props: {
+		mode: string
+		has_about: boolean
+		has_domain: boolean
+	}) => safeCapture("onboarding_workspace_created", props),
+
+	onboardingWorkspaceCreateFailed: (props: { error: string }) =>
+		safeCapture("onboarding_workspace_create_failed", props),
 
 	onboardingIntegrationClicked: (props: { integration: string }) =>
 		safeCapture("onboarding_integration_clicked", props),
+
+	onboardingSourcesCompleted: (props: { connected_count: number }) =>
+		safeCapture("onboarding_sources_completed", props),
+
+	onboardingAgentSelected: (props: { agent: string }) =>
+		safeCapture("onboarding_agent_selected", props),
+
+	onboardingIngestCompleted: () => safeCapture("onboarding_ingest_completed"),
+
+	onboardingInvitesSent: (props: { sent: number; failed: number }) =>
+		safeCapture("onboarding_invites_sent", props),
+
+	onboardingTeamSkipped: () => safeCapture("onboarding_team_skipped"),
 
 	onboardingChromeExtensionClicked: (props: {
 		source: "onboarding" | "settings" | "integrations"
@@ -99,15 +151,14 @@ export const analytics = {
 
 	onboardingMcpDetailOpened: () => safeCapture("onboarding_mcp_detail_opened"),
 
-	onboardingXBookmarksDetailOpened: () =>
-		safeCapture("onboarding_x_bookmarks_detail_opened"),
-
-	onboardingSkipped: (props: { from_step: OnboardingStep }) =>
+	onboardingSkipped: (props: { from_step: BrainStep }) =>
 		safeCapture("onboarding_skipped", props),
 
-	onboardingCompleted: (props?: {
-		source?: OnboardingSource
-		memories_count?: number
+	onboardingCompleted: (props: {
+		mode: string
+		steps_completed: number
+		sources_connected: number
+		invites_sent: number
 	}) => safeCapture("onboarding_completed", props),
 
 	// main app analytics

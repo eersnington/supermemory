@@ -82,6 +82,7 @@ import { cn } from "@lib/utils"
 import { dmSans125ClassName } from "@/lib/fonts"
 import { $fetch } from "@lib/api"
 import { toast } from "sonner"
+import { analytics } from "@/lib/analytics"
 
 type SourceId = "drive" | "notion" | "gmail" | "github" | "onedrive"
 type SourceState = "idle" | "connecting" | "connected" | "waitlist"
@@ -127,6 +128,7 @@ export function StepSources({
 		provider: "google-drive" | "notion" | "onedrive",
 		id: SourceId,
 	) => {
+		analytics.onboardingIntegrationClicked({ integration: provider })
 		setState(id, "connecting")
 		try {
 			const metadata: Record<string, string> = {}
@@ -158,6 +160,11 @@ export function StepSources({
 	const connectedCount = Object.values(values.connected).filter(
 		(s) => s === "connected" || s === "waitlist",
 	).length
+
+	const handleContinue = () => {
+		analytics.onboardingSourcesCompleted({ connected_count: connectedCount })
+		onContinue()
+	}
 
 	return (
 		<div>
@@ -239,14 +246,14 @@ export function StepSources({
 				<div className="flex items-center gap-[22px]">
 					<button
 						type="button"
-						onClick={onContinue}
+						onClick={handleContinue}
 						className="text-[#737373] font-medium text-[14px] hover:text-[#999] transition-colors"
 					>
 						Skip for now
 					</button>
 					<Button
 						variant="insideOut"
-						onClick={onContinue}
+						onClick={handleContinue}
 						disabled={connectedCount === 0}
 						className="rounded-full px-5 py-[10px] text-[13px] font-medium text-[#fafafa]"
 					>
