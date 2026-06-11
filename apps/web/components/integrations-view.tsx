@@ -2893,8 +2893,9 @@ export function IntegrationsView({
 			case "connector": {
 				const count = connectionsByProvider[item.provider].length
 				const isGranola = item.provider === "granola"
-				const needsPlanUpgrade =
-					isGranola ? !hasMaxProduct : !isAutumnLoading && !hasProProduct
+				const needsPlanUpgrade = isGranola
+					? !hasMaxProduct
+					: !isAutumnLoading && !hasProProduct
 				if (count > 0) {
 					return (
 						<div className="flex w-full items-center justify-between gap-2">
