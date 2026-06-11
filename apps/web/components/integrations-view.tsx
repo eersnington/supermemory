@@ -2894,7 +2894,7 @@ export function IntegrationsView({
 				const count = connectionsByProvider[item.provider].length
 				const isGranola = item.provider === "granola"
 				const needsPlanUpgrade =
-					!isAutumnLoading && (isGranola ? !hasMaxProduct : !hasProProduct)
+					isGranola ? !hasMaxProduct : !isAutumnLoading && !hasProProduct
 				if (count > 0) {
 					return (
 						<div className="flex w-full items-center justify-between gap-2">
@@ -3714,8 +3714,8 @@ export function IntegrationsView({
 			</Dialog>
 
 			<GranolaConnectModal
-				open={granolaModalOpen}
-				onOpenChange={setGranolaModalOpen}
+				open={hasMaxProduct && granolaModalOpen}
+				onOpenChange={(open) => setGranolaModalOpen(open && hasMaxProduct)}
 			/>
 		</div>
 	)
