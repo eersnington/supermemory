@@ -226,9 +226,7 @@ export default function BrainOnboardingPage() {
 		analytics.onboardingWorkspaceCreated({
 			mode,
 			has_about: Boolean(about.about.trim()),
-			has_domain: Boolean(
-				mode === "team" && (about.workspaceDomain || domain),
-			),
+			has_domain: Boolean(mode === "team" && (about.workspaceDomain || domain)),
 		})
 	}, [
 		organizations,
