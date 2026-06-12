@@ -33,7 +33,7 @@ export const analytics = {
 	chatDeleted: () => safeCapture("chat_deleted"),
 
 	viewModeChanged: (
-		mode: "dashboard" | "graph" | "list" | "integrations" | "chat",
+		mode: "dashboard" | "graph" | "list" | "integrations" | "chat" | "digests",
 	) => safeCapture("view_mode_changed", { mode }),
 
 	documentCardClicked: () => safeCapture("document_card_clicked"),
