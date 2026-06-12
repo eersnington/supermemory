@@ -31,6 +31,7 @@ import { DocumentModal } from "@/components/document-modal"
 import { DocumentsCommandPalette } from "@/components/documents-command-palette"
 import { FullscreenNoteModal } from "@/components/fullscreen-note-modal"
 import type { HighlightItem } from "@/components/highlights-card"
+import { DigestsView } from "@/components/digests-view"
 import { HotkeysProvider } from "react-hotkeys-hook"
 import { useHotkeys } from "react-hotkeys-hook"
 import { useIsMobile } from "@hooks/use-mobile"
@@ -701,6 +702,10 @@ export default function NewPage() {
 									<XBookmarksDetailView
 										onBack={() => void setViewMode("integrations")}
 									/>
+								) : viewMode === "digests" ? (
+									<div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+										<DigestsView />
+									</div>
 								) : viewMode === "graph" ? (
 									<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 										<GraphLayoutView onOpenDocument={handleOpenDocumentById} />
