@@ -1,39 +1,53 @@
 import posthog from "posthog-js"
 import type { BrainStep } from "@/components/onboarding-brain/types"
 
+const pendingEvents: Array<{
+	eventName: string
+	properties?: Record<string, unknown>
+}> = []
+let flushTimer: ReturnType<typeof setInterval> | undefined
+let flushTimeout: ReturnType<typeof setTimeout> | undefined
+
+const flushPendingEvents = () => {
+	if (!posthog.__loaded) return
+	while (pendingEvents.length > 0) {
+		const event = pendingEvents.shift()
+		if (!event) return
+		posthog.capture(event.eventName, event.properties)
+	}
+	if (flushTimer) {
+		clearInterval(flushTimer)
+		flushTimer = undefined
+	}
+	if (flushTimeout) {
+		clearTimeout(flushTimeout)
+		flushTimeout = undefined
+	}
+}
+
+const scheduleFlush = () => {
+	if (flushTimer) return
+	flushTimer = setInterval(flushPendingEvents, 200)
+	flushTimeout = setTimeout(() => {
+		if (!flushTimer) return
+		clearInterval(flushTimer)
+		flushTimer = undefined
+		flushTimeout = undefined
+		pendingEvents.length = 0
+	}, 10000)
+}
+
 const safeCapture = (
 	eventName: string,
 	properties?: Record<string, unknown>,
 ) => {
 	if (posthog.__loaded) {
+		flushPendingEvents()
 		posthog.capture(eventName, properties)
+		return
 	}
-}
-
-// Runs fn once PostHog has finished init, so events fired on a cold page load
-// (before PostHogProvider's effect runs) aren't dropped. Returns a cleanup.
-export const onAnalyticsReady = (fn: () => void) => {
-	if (posthog.__loaded) {
-		fn()
-		return () => {}
-	}
-	let cancelled = false
-	const timer = setInterval(() => {
-		if (cancelled) return
-		if (posthog.__loaded) {
-			clearInterval(timer)
-			fn()
-		}
-	}, 200)
-	const stop = setTimeout(() => {
-		cancelled = true
-		clearInterval(timer)
-	}, 10000)
-	return () => {
-		cancelled = true
-		clearInterval(timer)
-		clearTimeout(stop)
-	}
+	pendingEvents.push({ eventName, properties })
+	scheduleFlush()
 }
 
 export const analytics = {

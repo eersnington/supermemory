@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { useAuth } from "@lib/auth-context"
 import { authClient } from "@lib/auth"
-import { analytics, onAnalyticsReady } from "@/lib/analytics"
+import { analytics } from "@/lib/analytics"
 import { BrainShell } from "@/components/onboarding-brain/shell"
 import {
 	StepAbout,
@@ -106,26 +106,19 @@ export default function BrainOnboardingPage() {
 
 	const navTrigger = useRef<"user" | "auto">("auto")
 	const startedRef = useRef(false)
-	// Frozen at mount so URL navigation before PostHog loads can't reattribute it.
-	const entryStepRef = useRef(initialStep)
 	useEffect(() => {
 		if (startedRef.current) return
-		const entryStep = entryStepRef.current
-		// Wait for PostHog so the entry events survive a cold/direct load.
-		return onAnalyticsReady(() => {
-			if (startedRef.current) return
-			startedRef.current = true
-			analytics.onboardingStarted({
-				mode: detectedMode,
-				entry_step: entryStep,
-			})
-			analytics.onboardingStepViewed({
-				step: entryStep,
-				index: BRAIN_STEPS.indexOf(entryStep),
-				trigger: "auto",
-			})
+		startedRef.current = true
+		analytics.onboardingStarted({
+			mode: detectedMode,
+			entry_step: initialStep,
 		})
-	}, [detectedMode])
+		analytics.onboardingStepViewed({
+			step: initialStep,
+			index: BRAIN_STEPS.indexOf(initialStep),
+			trigger: "auto",
+		})
+	}, [detectedMode, initialStep])
 
 	const firstStepRender = useRef(true)
 	useEffect(() => {
