@@ -73,7 +73,7 @@ const Tooltip = ({
 const cardShadow =
 	"2px 2px 2px 0 rgba(0, 0, 0, 0.50) inset, -1px -1px 1px 0 rgba(82, 89, 102, 0.08) inset"
 
-type ManualImportProvider = "gemini" | "grok"
+type ManualImportProvider = "gemini"
 
 const manualImportProviderConfig: Record<
 	ManualImportProvider,
@@ -82,10 +82,6 @@ const manualImportProviderConfig: Record<
 	gemini: {
 		label: "Gemini",
 		actionSource: "gemini_manual_memory_import",
-	},
-	grok: {
-		label: "Grok",
-		actionSource: "grok_manual_memory_import",
 	},
 }
 
@@ -1117,16 +1113,6 @@ function App() {
 								) : showChatAppImports ? (
 									<div className="flex flex-col gap-3">
 										<ImportCard
-											icon={<OpenAILogo className="w-3 h-3.5 shrink-0" />}
-											title="Import ChatGPT Memories"
-											description="Open 'manage' > save your memories to supermemory"
-											onClick={() => {
-												chrome.tabs.create({
-													url: "https://chatgpt.com/#settings/Personalization",
-												})
-											}}
-										/>
-										<ImportCard
 											icon={<ClaudeLogo className="w-4 h-4 shrink-0" />}
 											title="Import Claude Memories"
 											description="Open 'view and manage' > save your memories to supermemory"
@@ -1137,18 +1123,32 @@ function App() {
 											}}
 										/>
 										<ImportCard
+											icon={<OpenAILogo className="w-3 h-3.5 shrink-0" />}
+											title="Import ChatGPT Memories"
+											description="Open 'manage' > save your memories to supermemory"
+											onClick={() => {
+												chrome.tabs.create({
+													url: "https://chatgpt.com/#settings/Personalization",
+												})
+											}}
+										/>
+										<ImportCard
+											icon={<GrokLogo className="w-4 h-4 shrink-0" />}
+											title="Import Grok Memories"
+											description="Open 'Memory from your chats' > save your memories to supermemory"
+											onClick={() => {
+												chrome.tabs.create({
+													url: "https://grok.com/?_s=data&sm_grok_import=memories",
+												})
+											}}
+										/>
+										<ImportCard
 											icon={
 												<GeminiLogo className="w-4 h-4 shrink-0 rounded-[4px]" />
 											}
 											title="Import Gemini Memories"
 											description="Paste memories exported from Gemini chat"
 											onClick={() => handleOpenManualMemoryImport("gemini")}
-										/>
-										<ImportCard
-											icon={<GrokLogo className="w-4 h-4 shrink-0" />}
-											title="Import Grok Memories"
-											description="Paste memories exported from Grok chat"
-											onClick={() => handleOpenManualMemoryImport("grok")}
 										/>
 									</div>
 								) : (
