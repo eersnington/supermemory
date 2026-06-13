@@ -335,6 +335,7 @@ export const apiSchema = createSchema({
 					id: z.string(),
 					isoWeek: z.string(),
 					emailSubject: z.string().nullable(),
+					title: z.string().nullable(),
 					status: z.enum(["pending", "processing", "completed", "failed"]),
 					sentAt: z.string().nullable(),
 					generatedAt: z.string(),
@@ -360,6 +361,7 @@ export const apiSchema = createSchema({
 			sentAt: z.string().nullable(),
 			generatedAt: z.string(),
 			digestData: z.object({
+				title: z.string(),
 				intro: z.string(),
 				highlights: z.array(
 					z.object({

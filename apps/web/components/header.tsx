@@ -15,7 +15,6 @@ import {
 	LifeBuoy,
 	LayoutGrid,
 	ChevronRight,
-	Mail,
 } from "lucide-react"
 import { Button } from "@ui/components/button"
 import { cn } from "@lib/utils"
@@ -255,11 +254,6 @@ export function Header({ onAddMemory, onOpenSearch }: HeaderProps) {
 									mode: "list" as const,
 									label: "Memories",
 									icon: LayoutGrid,
-								},
-								{
-									mode: "digests" as const,
-									label: "Digests",
-									icon: Mail,
 								},
 							] as const
 						).map(({ mode, label, icon: Icon }) => (

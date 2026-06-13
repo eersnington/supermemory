@@ -578,7 +578,10 @@ export default function NewPage() {
 
 	const isChatView = viewMode === "chat"
 	const showNovaBackdrop =
-		viewMode === "graph" || viewMode === "list" || viewMode === "dashboard"
+		viewMode === "graph" ||
+		viewMode === "list" ||
+		viewMode === "dashboard" ||
+		viewMode === "digests"
 	const isDashboardShell =
 		viewMode === "dashboard" || (viewMode === "graph" && isMobile)
 	const isGraphMode = viewMode === "graph"
@@ -592,7 +595,8 @@ export default function NewPage() {
 			<div
 				className={cn(
 					"relative flex min-h-dvh flex-col bg-[#05080D]",
-					(isGraphMode || isChatView) && "h-dvh overflow-hidden",
+					(isGraphMode || isChatView || viewMode === "digests") &&
+						"h-dvh overflow-hidden",
 					showBottomNav &&
 						!isGraphMode &&
 						"pb-[calc(4rem+env(safe-area-inset-bottom))]",
@@ -609,6 +613,10 @@ export default function NewPage() {
 							id="graph-dotted-grid"
 							className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(105,167,240,0.25)_1px,transparent_1px)] bg-size-[32px_32px] mask-[radial-gradient(ellipse_at_center,black_60%,transparent_100%)]"
 						/>
+						{/* Extra dim on the digests page so content pops */}
+						{viewMode === "digests" && (
+							<div className="absolute inset-0 bg-black/20" aria-hidden />
+						)}
 					</div>
 				)}
 				{isPublicIntegrations ? (
@@ -636,7 +644,8 @@ export default function NewPage() {
 						transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
 						className={cn(
 							"relative z-10 flex min-h-0 flex-1 flex-col",
-							(isGraphMode || isChatView) && "overflow-hidden",
+							(isGraphMode || isChatView || viewMode === "digests") &&
+								"overflow-hidden",
 						)}
 					>
 						<div
@@ -703,7 +712,7 @@ export default function NewPage() {
 										onBack={() => void setViewMode("integrations")}
 									/>
 								) : viewMode === "digests" ? (
-									<div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+									<div className="min-h-0 min-w-0 flex-1 overflow-y-auto lg:overflow-hidden">
 										<DigestsView />
 									</div>
 								) : viewMode === "graph" ? (
@@ -768,6 +777,7 @@ export default function NewPage() {
 										onHighlightsChat={handleHighlightsChat}
 										onHighlightsShowRelated={handleHighlightsShowRelated}
 										onResetHighlights={handleResetHighlights}
+										onOpenDigests={() => void setViewMode("digests")}
 										memoryOfDay={memoryOfDay}
 									/>
 								)}

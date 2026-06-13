@@ -7,6 +7,7 @@ export type DigestSummary = {
 	id: string
 	isoWeek: string
 	emailSubject: string | null
+	title: string | null
 	status: "pending" | "processing" | "completed" | "failed"
 	sentAt: string | null
 	generatedAt: string
@@ -22,6 +23,7 @@ export type DigestDetail = {
 	sentAt: string | null
 	generatedAt: string
 	digestData: {
+		title: string
 		intro: string
 		highlights: Array<{
 			id: string
