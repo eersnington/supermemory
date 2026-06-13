@@ -107,7 +107,11 @@ function setupGrokRouteChangeDetection() {
 }
 
 function hasGrokImportIntent() {
-	return new URLSearchParams(window.location.search).get(GROK_IMPORT_INTENT_PARAM) === GROK_IMPORT_INTENT_VALUE
+	return (
+		new URLSearchParams(window.location.search).get(
+			GROK_IMPORT_INTENT_PARAM,
+		) === GROK_IMPORT_INTENT_VALUE
+	)
 }
 
 function clearGrokImportIntent() {
@@ -137,7 +141,10 @@ function getNormalizedText(element: Element) {
 	return (element.textContent || "").replace(/\s+/g, " ").trim()
 }
 
-function clickVisibleElementByText(labels: string[], root: ParentNode = document) {
+function clickVisibleElementByText(
+	labels: string[],
+	root: ParentNode = document,
+) {
 	const elements = Array.from(
 		root.querySelectorAll<HTMLElement>(
 			"button, a, [role='button'], [role='tab'], [data-testid], div, span",
@@ -167,22 +174,24 @@ function clickVisibleElementByText(labels: string[], root: ParentNode = document
 }
 
 function getGrokSettingsDialog() {
-	return Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).find(
-		(dialog) => {
-			const text = getNormalizedText(dialog)
-			return (
-				isVisible(dialog) &&
-				text.includes("Data Controls") &&
-				text.includes("Appearance") &&
-				text.includes("Behavior")
-			)
-		},
-	)
+	return Array.from(
+		document.querySelectorAll<HTMLElement>('[role="dialog"]'),
+	).find((dialog) => {
+		const text = getNormalizedText(dialog)
+		return (
+			isVisible(dialog) &&
+			text.includes("Data Controls") &&
+			text.includes("Appearance") &&
+			text.includes("Behavior")
+		)
+	})
 }
 
 function isGrokDataControlsVisible() {
 	const text = getNormalizedText(document.body)
-	return text.includes("Data Controls") && text.includes("Memory from your chats")
+	return (
+		text.includes("Data Controls") && text.includes("Memory from your chats")
+	)
 }
 
 async function handleGrokImportIntent() {
