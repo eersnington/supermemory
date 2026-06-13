@@ -464,8 +464,7 @@ function App() {
 					console.error("Failed to send message to content script:", error)
 					const intentExpiry = Date.now() + UI_CONFIG.IMPORT_INTENT_TTL
 					await chrome.storage.local.set({
-						[STORAGE_KEYS.TWITTER_BOOKMARKS_IMPORT_INTENT_UNTIL]:
-							intentExpiry,
+						[STORAGE_KEYS.TWITTER_BOOKMARKS_IMPORT_INTENT_UNTIL]: intentExpiry,
 					})
 					await chrome.tabs.create({
 						url: targetUrl,
@@ -515,7 +514,9 @@ function App() {
 			window.setTimeout(() => setManualImportCopied(false), 1600)
 		} catch (error) {
 			console.error("Failed to copy memory import prompt:", error)
-			setManualImportError("Could not copy prompt. Select and copy it manually.")
+			setManualImportError(
+				"Could not copy prompt. Select and copy it manually.",
+			)
 		}
 	}
 
@@ -944,7 +945,10 @@ function App() {
 											<div>
 												<h3 className="m-0 text-base font-semibold text-white">
 													Import{" "}
-													{manualImportProviderConfig[manualImportProvider].label}{" "}
+													{
+														manualImportProviderConfig[manualImportProvider]
+															.label
+													}{" "}
 													memories
 												</h3>
 												<p className="m-0 mt-1 text-xs leading-tight text-[#737373]">
