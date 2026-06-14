@@ -20,7 +20,7 @@ Environment:
   SUPERMEMORY_PORT         Port used by the server in run mode.
   SUPERMEMORY_DATA_DIR     Data directory used by the server in run mode.
   SUPERMEMORY_EMBEDDING_RAM_LIMIT
-                          Ingest memory headroom. Defaults to 1gb in this profile.
+                          Ingest memory headroom. Not changed by this profile.
   SOURCE_DATA_DIR          Seed data directory for measure mode. Defaults to ~/.supermemory.
   IDLE_SECONDS             Ready-idle sampling time for measure mode.
 
@@ -53,8 +53,6 @@ set_default_env() {
 apply_lowmem_defaults() {
   set_default_env SUPERMEMORY_SKIP_EMBEDDING_PREWARM 1
   set_default_env SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS 30000
-  set_default_env SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE 2
-  set_default_env SUPERMEMORY_EMBEDDING_RAM_LIMIT 1gb
   set_default_env SUPERMEMORY_NO_OPEN 1
   set_default_env SUPERMEMORY_NO_UPDATE_CHECK 1
 }
@@ -66,8 +64,6 @@ supermemory low-memory profile
 Applied defaults unless already set:
   SUPERMEMORY_SKIP_EMBEDDING_PREWARM=${SUPERMEMORY_SKIP_EMBEDDING_PREWARM:-}
   SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=${SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS:-}
-  SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=${SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE:-}
-  SUPERMEMORY_EMBEDDING_RAM_LIMIT=${SUPERMEMORY_EMBEDDING_RAM_LIMIT:-}
   SUPERMEMORY_NO_OPEN=${SUPERMEMORY_NO_OPEN:-}
   SUPERMEMORY_NO_UPDATE_CHECK=${SUPERMEMORY_NO_UPDATE_CHECK:-}
 
@@ -326,9 +322,7 @@ run_measurement() {
   local lowmem_output lowmem_dir
   lowmem_output="$(run_bench_scenario sm-lowmem-profile \
     SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
-    SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
-    SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-    SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb)"
+    SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000)"
   lowmem_dir="$(printf '%s\n' "$lowmem_output" | tail -n 1)"
 
   printf '\n'
@@ -425,18 +419,14 @@ run_balanced_measurement() {
   local cold_output cold_dir
   cold_output="$(run_bench_scenario sm-balanced-cold \
     SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
-    SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
-    SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-    SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb)"
+    SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000)"
   cold_dir="$(printf '%s\n' "$cold_output" | tail -n 1)"
 
   printf 'Running balanced warmup benchmark...\n'
   local balanced_output balanced_dir
   balanced_output="$(WARM_AFTER_READY=1 run_bench_scenario sm-balanced-warm \
     SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
-    SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
-    SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-    SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb)"
+    SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000)"
   balanced_dir="$(printf '%s\n' "$balanced_output" | tail -n 1)"
 
   printf '\n'

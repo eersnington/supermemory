@@ -11,6 +11,7 @@
     "bench:low-memory:measure": "bench-tooling/run.sh measure-balanced",
     "bench:low-memory:scenario": "bench-tooling/bench.sh",
     "bench:low-memory:matrix": "bench-tooling/matrix.sh",
+    "bench:low-memory:compare": "SCENARIOS=stock-30s,optimized-30s bench-tooling/matrix.sh",
     "bench:low-memory:async": "bench-tooling/async.sh",
     "bench:low-memory:parallel": "bench-tooling/parallel.sh",
     "bench:low-memory:collect": "bun bench-tooling/collect.ts",
