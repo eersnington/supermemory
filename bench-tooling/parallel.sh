@@ -184,14 +184,17 @@ run_coordinator() {
     printf '%s\t%s\t%s\t%s\t%s\n' "$worker" "$worker_pid" "$worker_count" "$worker_root" "$worker_log" >> "$workers_file"
   done
 
-  local exit_code=0
+  local exit_code=0 collect_inputs=()
   for worker_pid in "${pids[@]}"; do
     if ! wait "$worker_pid"; then
       exit_code=1
     fi
   done
 
-  bun "$SCRIPT_DIR/collect.ts" "$run_root/combined" "$run_root"/worker-* || exit_code=1
+  for worker in $(seq 1 "$jobs"); do
+    collect_inputs+=("$run_root/worker-$worker")
+  done
+  bun "$SCRIPT_DIR/collect.ts" "$run_root/combined" "${collect_inputs[@]}" || exit_code=1
   printf 'finished_at=%s\nexit_code=%s\n' "$(date -Iseconds)" "$exit_code" > "$run_root/parallel-status.txt"
   return "$exit_code"
 }
