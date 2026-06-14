@@ -1,17 +1,19 @@
 # Low-Memory Benchmark Results
 
-Artifact: `.memory-bench/profile-matrix/20260615-030231-parallel/combined/summary.md` (gitignored)
+**Artifact:** `.memory-bench/profile-matrix/20260615-030231-parallel/combined/summary.md` _(gitignored)_
 
-Command:
+**Command:**
 
 ```sh
 RUN_COUNT=10 PARALLEL_JOBS=10 SCENARIOS=stock-30s,optimized-30s bun run bench:low-memory:parallel
 ```
 
-Configuration:
+---
+
+## Configuration
 
 | Setting | Value |
-|---|---:|
+| :--- | ---: |
 | Workers | `10` |
 | Runs per scenario | `10` |
 | Total scenario runs | `20` |
@@ -20,43 +22,74 @@ Configuration:
 | Post-search idle | `40s` |
 | Post-add idle | `40s` |
 
-Scenario settings:
+## Scenario Settings
 
 | Scenario | Env | Background warmup |
-|---|---|---|
-| `stock-30s` | default | no |
-| `optimized-30s` | `SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1`, `SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000` | yes |
+| :--- | :--- | :--- |
+| `stock-30s` | default | No |
+| `optimized-30s` | `SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1`<br>`SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000` | Yes |
 
-Aggregate cells use `avg / p50 / p95`. RSS idle cells also show the lowest observed min sample across runs.
+> **Note:** Aggregate cells show `avg / p50 / p95`. RSS idle columns also include the lowest observed min across runs.
+
+---
 
 ## Aggregate Summary
 
-| Scenario | Runs | Ready | Peak RSS | Ready Idle Last | Post Search Last | Post Add Last | Warmup | First Search | Second Search | Shutdown Crashes |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| stock-30s | 10 | 5925 ms / 5677 ms / 8297 ms | 851 MB / 816 MB / 1039 MB | 301 MB / 284 MB / 415 MB ; min 97 MB | 261 MB / 280 MB / 374 MB ; min 97 MB | 267 MB / 260 MB / 313 MB ; min 212 MB | n/a | 105 ms / 107 ms / 133 ms | 107 ms / 107 ms / 179 ms | 10/10 |
-| optimized-30s | 10 | 1627 ms / 1651 ms / 1885 ms | 1165 MB / 1071 MB / 1602 MB | 398 MB / 395 MB / 480 MB ; min 251 MB | 371 MB / 357 MB / 472 MB ; min 288 MB | 245 MB / 239 MB / 330 MB ; min 192 MB | 2198 ms / 2131 ms / 2861 ms | 78 ms / 78 ms / 91 ms | 130 ms / 131 ms / 199 ms | 10/10 |
+### Timing (ms)
+
+| Scenario | Ready avg | Ready p50 | Ready p95 | Warmup avg | Warmup p50 | Warmup p95 | 1st Search p50 | 2nd Search p50 |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `stock-30s` | 5,925 | 5,677 | 8,297 | n/a | n/a | n/a | 107 | 107 |
+| `optimized-30s` | 1,627 | 1,651 | 1,885 | 2,198 | 2,131 | 2,861 | 78 | 131 |
+
+### Memory — Peak RSS (MB)
+
+| Scenario | avg | p50 | p95 |
+| :--- | ---: | ---: | ---: |
+| `stock-30s` | 851 | 816 | 1,039 |
+| `optimized-30s` | 1,165 | 1,071 | 1,602 |
+
+### Memory — Idle RSS (MB) · avg / p50 / p95 · min
+
+| Scenario | Ready Idle avg | Ready Idle p50 | Ready Idle p95 | Ready Idle min | Post-Search avg | Post-Search p50 | Post-Search p95 | Post-Search min | Post-Add avg | Post-Add p50 | Post-Add p95 | Post-Add min |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `stock-30s` | 301 | 284 | 415 | 97 | 261 | 280 | 374 | 97 | 267 | 260 | 313 | 212 |
+| `optimized-30s` | 398 | 395 | 480 | 251 | 371 | 357 | 472 | 288 | 245 | 239 | 330 | 192 |
+
+### Reliability
+
+| Scenario | Runs | Shutdown Crashes |
+| :--- | ---: | ---: |
+| `stock-30s` | 10 | 10/10 |
+| `optimized-30s` | 10 | 10/10 |
+
+---
 
 ## Summary
 
 | Result | Evidence |
-|---|---|
-| Startup readiness improved significantly. | `optimized-30s` p50 ready was `1651 ms`; `stock-30s` p50 ready was `5677 ms`. |
-| Peak RSS did not improve. | `optimized-30s` p50 peak RSS was `1071 MB`; `stock-30s` p50 peak RSS was `816 MB`. |
-| Ready-idle and post-search idle RSS were higher in the optimized profile. | Ready-idle p50 was `395 MB` optimized vs `284 MB` stock; post-search p50 was `357 MB` optimized vs `280 MB` stock. |
-| Post-add settled RSS was slightly lower in the optimized profile. | Post-add p50 was `239 MB` optimized vs `260 MB` stock. |
-| First search latency improved after background warmup. | First-search p50 was `78 ms` optimized vs `107 ms` stock. |
-| Second search latency was worse in the optimized profile. | Second-search p50 was `131 ms` optimized vs `107 ms` stock. |
-| Shutdown reliability was unchanged. | Both scenarios crashed on shutdown in `10/10` runs. |
+| :--- | :--- |
+| ✅ Startup readiness improved significantly | `optimized-30s` p50 ready: **1,651 ms** vs `stock-30s` p50 ready: **5,677 ms** |
+| ❌ Peak RSS did not improve | `optimized-30s` p50 peak RSS: **1,071 MB** vs `stock-30s`: **816 MB** |
+| ❌ Ready-idle and post-search idle RSS were higher in optimized | Ready-idle p50: **395 MB** (optimized) vs **284 MB** (stock); post-search p50: **357 MB** vs **280 MB** |
+| ✅ Post-add settled RSS slightly lower in optimized | Post-add p50: **239 MB** (optimized) vs **260 MB** (stock) |
+| ✅ First search latency improved after background warmup | First-search p50: **78 ms** (optimized) vs **107 ms** (stock) |
+| ❌ Second search latency was worse in optimized | Second-search p50: **131 ms** (optimized) vs **107 ms** (stock) |
+| ⚠️ Shutdown reliability unchanged | Both scenarios crashed on shutdown in **10/10** runs |
 
-## Three Profiles
+---
 
-| Profile | Env | Warmup behavior | Purpose |
-|---|---|---|---|
-| Stock | default | Embeddings are prewarmed during normal startup. | Baseline behavior for the self-hosted server. |
-| Cold optimized | `SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1`, `SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000` | No benchmark background warmup. The first real embedding request pays cold-load cost. | Measures the raw tradeoff of faster HTTP readiness versus cold first-search latency. Not included in this 10-worker result. |
-| Balanced optimized | `SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1`, `SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000` | The benchmark runs one authenticated background search after HTTP readiness. | Moves embedding load out of the startup readiness path while trying to keep the first user-visible search warm. This is `optimized-30s` in this result. |
+## Profiles
 
-This 10-worker run compares Stock (`stock-30s`) against Balanced optimized (`optimized-30s`). It does not set `SUPERMEMORY_INGEST_CONCURRENCY`, `SUPERMEMORY_EMBEDDING_RAM_LIMIT`, or `SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE` in the optimized scenario.
+| Profile | Env | Warmup Behavior | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Stock** | default | Embeddings prewarmed during normal startup | Baseline behavior for the self-hosted server |
+| **Cold optimized** | `SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1`<br>`SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000` | No background warmup — first real embedding request pays cold-load cost | Measures the raw tradeoff of faster HTTP readiness vs. cold first-search latency. _Not included in this 10-worker result._ |
+| **Balanced optimized** | `SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1`<br>`SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000` | Benchmark runs one authenticated background search after HTTP readiness | Moves embedding load out of the startup readiness path while trying to keep the first user-visible search warm. This is `optimized-30s` in this result. |
+
+> This 10-worker run compares **Stock** (`stock-30s`) against **Balanced optimized** (`optimized-30s`). It does not set `SUPERMEMORY_INGEST_CONCURRENCY`, `SUPERMEMORY_EMBEDDING_RAM_LIMIT`, or `SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE` in the optimized scenario.
+
+---
 
 ## Likely Explanation
 
@@ -70,27 +103,36 @@ Post-add settled RSS is slightly lower in the optimized profile because the long
 
 The shutdown crashes are a separate runtime reliability issue. They happen after request timings are collected and affect both profiles equally in this run.
 
+---
+
 ## Individual Runs
 
-| Scenario | Ready | Peak RSS | Ready Idle Last/Min | Post Search Last/Min | Post Add Last/Min | Warmup | First Search | Second Search | Shutdown Crash |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
-| stock-30s | 5544 ms | 1039 MB | 204 MB / 169 MB | 337 MB / 255 MB | 245 MB / 212 MB | n/a | 105 ms (200) | 80 ms (200) | yes |
-| optimized-30s | 1139 ms | 1202 MB | 344 MB / 344 MB | 373 MB / 314 MB | 212 MB / 212 MB | 2090 ms (200) | 66 ms (200) | 86 ms (200) | yes |
-| stock-30s | 7476 ms | 703 MB | 403 MB / 338 MB | 142 MB / 142 MB | 305 MB / 305 MB | n/a | 81 ms (200) | 123 ms (200) | yes |
-| optimized-30s | 1758 ms | 1012 MB | 354 MB / 354 MB | 288 MB / 288 MB | 220 MB / 198 MB | 2861 ms (200) | 83 ms (200) | 178 ms (200) | yes |
-| stock-30s | 5236 ms | 982 MB | 236 MB / 98 MB | 374 MB / 276 MB | 233 MB / 217 MB | n/a | 121 ms (200) | 61 ms (200) | yes |
-| optimized-30s | 1459 ms | 1602 MB | 412 MB / 251 MB | 457 MB / 326 MB | 237 MB / 207 MB | 1731 ms (200) | 78 ms (200) | 63 ms (200) | yes |
-| stock-30s | 4702 ms | 1016 MB | 236 MB / 97 MB | 278 MB / 264 MB | 260 MB / 218 MB | n/a | 133 ms (200) | 63 ms (200) | yes |
-| optimized-30s | 1885 ms | 1587 MB | 480 MB / 269 MB | 472 MB / 318 MB | 241 MB / 192 MB | 2013 ms (200) | 78 ms (200) | 75 ms (200) | yes |
-| stock-30s | 4202 ms | 849 MB | 233 MB / 97 MB | 339 MB / 257 MB | 259 MB / 232 MB | n/a | 124 ms (200) | 83 ms (200) | yes |
-| optimized-30s | 1693 ms | 1279 MB | 420 MB / 308 MB | 419 MB / 298 MB | 212 MB / 212 MB | 2370 ms (200) | 86 ms (200) | 165 ms (200) | yes |
-| stock-30s | 8297 ms | 735 MB | 371 MB / 324 MB | 97 MB / 97 MB | 256 MB / 256 MB | n/a | 80 ms (200) | 179 ms (200) | yes |
-| optimized-30s | 1774 ms | 1101 MB | 373 MB / 373 MB | 341 MB / 290 MB | 330 MB / 217 MB | 2633 ms (200) | 91 ms (200) | 142 ms (200) | yes |
-| stock-30s | 6647 ms | 775 MB | 415 MB / 356 MB | 224 MB / 224 MB | 279 MB / 279 MB | n/a | 86 ms (200) | 125 ms (200) | yes |
-| optimized-30s | 1545 ms | 1041 MB | 400 MB / 400 MB | 325 MB / 304 MB | 251 MB / 201 MB | 2171 ms (200) | 72 ms (200) | 163 ms (200) | yes |
-| stock-30s | 5253 ms | 863 MB | 279 MB / 279 MB | 282 MB / 279 MB | 233 MB / 233 MB | n/a | 108 ms (200) | 100 ms (200) | yes |
-| optimized-30s | 1609 ms | 1004 MB | 389 MB / 382 MB | 372 MB / 332 MB | 241 MB / 234 MB | 1997 ms (200) | 88 ms (200) | 110 ms (200) | yes |
-| stock-30s | 5810 ms | 762 MB | 289 MB / 289 MB | 285 MB / 271 MB | 313 MB / 292 MB | n/a | 109 ms (200) | 113 ms (200) | yes |
-| optimized-30s | 1599 ms | 1000 MB | 381 MB / 381 MB | 338 MB / 323 MB | 236 MB / 193 MB | 1609 ms (200) | 62 ms (200) | 120 ms (200) | yes |
-| stock-30s | 6079 ms | 783 MB | 346 MB / 342 MB | 254 MB / 254 MB | 284 MB / 273 MB | n/a | 101 ms (200) | 139 ms (200) | yes |
-| optimized-30s | 1804 ms | 820 MB | 422 MB / 422 MB | 328 MB / 328 MB | 266 MB / 204 MB | 2502 ms (200) | 74 ms (200) | 199 ms (200) | yes |
+### `stock-30s`
+
+| Run | Ready (ms) | Peak RSS (MB) | Ready Idle last (MB) | Ready Idle min (MB) | Post-Search last (MB) | Post-Search min (MB) | Post-Add last (MB) | Post-Add min (MB) | 1st Search (ms) | 2nd Search (ms) | Crash |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |
+| 1 | 5,544 | 1,039 | 204 | 169 | 337 | 255 | 245 | 212 | 105 | 80 | ❌ |
+| 2 | 7,476 | 703 | 403 | 338 | 142 | 142 | 305 | 305 | 81 | 123 | ❌ |
+| 3 | 5,236 | 982 | 236 | 98 | 374 | 276 | 233 | 217 | 121 | 61 | ❌ |
+| 4 | 4,702 | 1,016 | 236 | 97 | 278 | 264 | 260 | 218 | 133 | 63 | ❌ |
+| 5 | 4,202 | 849 | 233 | 97 | 339 | 257 | 259 | 232 | 124 | 83 | ❌ |
+| 6 | 8,297 | 735 | 371 | 324 | 97 | 97 | 256 | 256 | 80 | 179 | ❌ |
+| 7 | 6,647 | 775 | 415 | 356 | 224 | 224 | 279 | 279 | 86 | 125 | ❌ |
+| 8 | 5,253 | 863 | 279 | 279 | 282 | 279 | 233 | 233 | 108 | 100 | ❌ |
+| 9 | 5,810 | 762 | 289 | 289 | 285 | 271 | 313 | 292 | 109 | 113 | ❌ |
+| 10 | 6,079 | 783 | 346 | 342 | 254 | 254 | 284 | 273 | 101 | 139 | ❌ |
+
+### `optimized-30s`
+
+| Run | Ready (ms) | Peak RSS (MB) | Warmup (ms) | Ready Idle last (MB) | Ready Idle min (MB) | Post-Search last (MB) | Post-Search min (MB) | Post-Add last (MB) | Post-Add min (MB) | 1st Search (ms) | 2nd Search (ms) | Crash |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |
+| 1 | 1,139 | 1,202 | 2,090 | 344 | 344 | 373 | 314 | 212 | 212 | 66 | 86 | ❌ |
+| 2 | 1,758 | 1,012 | 2,861 | 354 | 354 | 288 | 288 | 220 | 198 | 83 | 178 | ❌ |
+| 3 | 1,459 | 1,602 | 1,731 | 412 | 251 | 457 | 326 | 237 | 207 | 78 | 63 | ❌ |
+| 4 | 1,885 | 1,587 | 2,013 | 480 | 269 | 472 | 318 | 241 | 192 | 78 | 75 | ❌ |
+| 5 | 1,693 | 1,279 | 2,370 | 420 | 308 | 419 | 298 | 212 | 212 | 86 | 165 | ❌ |
+| 6 | 1,774 | 1,101 | 2,633 | 373 | 373 | 341 | 290 | 330 | 217 | 91 | 142 | ❌ |
+| 7 | 1,545 | 1,041 | 2,171 | 400 | 400 | 325 | 304 | 251 | 201 | 72 | 163 | ❌ |
+| 8 | 1,609 | 1,004 | 1,997 | 389 | 382 | 372 | 332 | 241 | 234 | 88 | 110 | ❌ |
+| 9 | 1,599 | 1,000 | 1,609 | 381 | 381 | 338 | 323 | 236 | 193 | 62 | 120 | ❌ |
+| 10 | 1,804 | 820 | 2,502 | 422 | 422 | 328 | 328 | 266 | 204 | 74 | 199 | ❌ |
