@@ -34,7 +34,15 @@ Run the full low-memory matrix directly only on an isolated machine:
 RUN_COUNT=100 SCENARIOS=balanced-30s-quick bun run bench:low-memory:matrix
 ```
 
-Use chunks on a workstation. Chunking preserves progress and avoids OpenCode command timeouts, but it does not reduce each individual run's peak memory.
+Run an adaptive parallel 100-run benchmark on a workstation:
+
+```sh
+RUN_COUNT=100 SCENARIOS=balanced-30s-quick bun run bench:low-memory:parallel
+```
+
+On a 16 GB / 10-core Mac this defaults to 2 workers. Override with `PARALLEL_JOBS=1`, `PARALLEL_JOBS=2`, or another explicit value if needed.
+
+Use chunks on a workstation when you want the lowest risk. Chunking preserves progress and avoids OpenCode command timeouts, but it does not reduce each individual run's peak memory.
 
 ## Recommended Profile
 

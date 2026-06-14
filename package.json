@@ -12,6 +12,7 @@
     "bench:low-memory:scenario": "bench-tooling/bench.sh",
     "bench:low-memory:matrix": "bench-tooling/matrix.sh",
     "bench:low-memory:async": "bench-tooling/async.sh",
+    "bench:low-memory:parallel": "bench-tooling/parallel.sh",
     "bench:low-memory:collect": "bun bench-tooling/collect.ts",
     "bench:probe:pglite": "bench-tooling/probes/pglite.sh",
     "bench:probe:bun": "bench-tooling/probes/bun-runtime.sh",
