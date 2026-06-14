@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 OUT_ROOT="${OUT_ROOT:-$REPO_ROOT/.memory-bench/pglite-initial-memory}"
 PGLITE_VERSION="${PGLITE_VERSION:-0.5.2}"
 SAMPLE_INTERVAL_SECONDS="${SAMPLE_INTERVAL_SECONDS:-0.1}"
@@ -13,7 +13,7 @@ PROBE_TIMEOUT_SECONDS="${PROBE_TIMEOUT_SECONDS:-5}"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/pglite-initial-memory-probe.sh
+  bench-tooling/probes/pglite.sh
 
 Installs @electric-sql/pglite in an isolated .memory-bench workspace and tests
 PGlite initialMemory/postgresql.conf variants under the same Bun runtime.

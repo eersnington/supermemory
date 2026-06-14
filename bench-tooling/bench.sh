@@ -18,15 +18,15 @@ RUN_VM_MAP="${RUN_VM_MAP:-1}"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/memory-bench.sh scenario <name> [KEY=VALUE ...]
-  scripts/memory-bench.sh suite
+  bench-tooling/bench.sh scenario <name> [KEY=VALUE ...]
+  bench-tooling/bench.sh suite
 
 Examples:
-  scripts/memory-bench.sh scenario baseline SUPERMEMORY_VERBOSE=1
-  scripts/memory-bench.sh scenario idle-15s SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=15000
-  ADD_COUNT=20 DOC_REPEAT_COUNT=300 scripts/memory-bench.sh scenario add-20-large
-  WARM_AFTER_READY=1 scripts/memory-bench.sh scenario balanced-warm SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1
-  scripts/memory-bench.sh suite
+  bench-tooling/bench.sh scenario baseline SUPERMEMORY_VERBOSE=1
+  bench-tooling/bench.sh scenario idle-15s SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=15000
+  ADD_COUNT=20 DOC_REPEAT_COUNT=300 bench-tooling/bench.sh scenario add-20-large
+  WARM_AFTER_READY=1 bench-tooling/bench.sh scenario balanced-warm SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1
+  bench-tooling/bench.sh suite
 
 Outputs are written to .memory-bench/runs/<timestamp>-<name>/.
 USAGE

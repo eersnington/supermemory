@@ -9,11 +9,11 @@ INSTALL_TARGET_DEFAULT="$HOME/.local/bin/sm-lowmem"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/sm-lowmem.sh run
-  scripts/sm-lowmem.sh run-balanced
-  scripts/sm-lowmem.sh measure
-  scripts/sm-lowmem.sh measure-balanced
-  scripts/sm-lowmem.sh install
+  bench-tooling/run.sh run
+  bench-tooling/run.sh run-balanced
+  bench-tooling/run.sh measure
+  bench-tooling/run.sh measure-balanced
+  bench-tooling/run.sh install
 
 Environment:
   SUPERMEMORY_SERVER_BIN   Path to supermemory-server binary.
@@ -198,7 +198,7 @@ run_bench_scenario() {
     IDLE_SECONDS="${IDLE_SECONDS:-18}" \
     POST_SEARCH_IDLE_SECONDS="${POST_SEARCH_IDLE_SECONDS:-8}" \
     POST_ADD_IDLE_SECONDS="${POST_ADD_IDLE_SECONDS:-8}" \
-    "$REPO_ROOT/scripts/memory-bench.sh" scenario "$scenario_name" "$@"
+    "$SCRIPT_DIR/bench.sh" scenario "$scenario_name" "$@"
 }
 
 summarize_measurement() {
@@ -315,8 +315,8 @@ console.log(`  Low-memory:         ${lowmem.dir}`);
 }
 
 run_measurement() {
-  if [[ ! -x "$REPO_ROOT/scripts/memory-bench.sh" ]]; then
-    fail "missing executable benchmark harness at $REPO_ROOT/scripts/memory-bench.sh"
+  if [[ ! -x "$SCRIPT_DIR/bench.sh" ]]; then
+    fail "missing executable benchmark harness at $SCRIPT_DIR/bench.sh"
   fi
 
   printf 'Running baseline benchmark...\n'
@@ -415,8 +415,8 @@ for (const row of rows) console.log(`  ${row.label}: ${row.dir}`);
 }
 
 run_balanced_measurement() {
-  if [[ ! -x "$REPO_ROOT/scripts/memory-bench.sh" ]]; then
-    fail "missing executable benchmark harness at $REPO_ROOT/scripts/memory-bench.sh"
+  if [[ ! -x "$SCRIPT_DIR/bench.sh" ]]; then
+    fail "missing executable benchmark harness at $SCRIPT_DIR/bench.sh"
   fi
 
   printf 'Running baseline benchmark...\n'
@@ -455,7 +455,7 @@ install_wrapper() {
   mkdir -p "$target_dir"
   cat > "$target" <<EOF
 #!/usr/bin/env bash
-exec "$REPO_ROOT/scripts/sm-lowmem.sh" "\$@"
+exec "$SCRIPT_DIR/run.sh" "\$@"
 EOF
   chmod +x "$target"
   printf 'Installed wrapper: %s\n' "$target"

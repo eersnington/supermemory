@@ -10,7 +10,7 @@ PROBE_HOLD_MS="${PROBE_HOLD_MS:-1000}"
 usage() {
   cat <<'USAGE'
 Usage:
-  scripts/bun-runtime-compare.sh
+  bench-tooling/probes/bun-runtime.sh
 
 Compares the Bun runtime embedded in the installed supermemory-server binary
 against the currently installed bun CLI on focused probes.

@@ -1,8 +1,44 @@
 # Low-Memory Profile Results
 
+## How to Run
+
+Run the recommended low-memory profile locally:
+
+```sh
+bun run bench:low-memory:run
+```
+
+Run a quick measurement comparing default startup against the recommended profile:
+
+```sh
+bun run bench:low-memory:measure
+```
+
+Run a safe async benchmark chunk that survives short shell/OpenCode timeouts:
+
+```sh
+RUN_COUNT=5 SCENARIOS=balanced-30s-quick bun run bench:low-memory:async
+```
+
+Collect completed async chunks into one aggregate result:
+
+```sh
+bun run bench:low-memory:collect -- \
+  .memory-bench/profile-matrix/combined-balanced-100 \
+  .memory-bench/profile-matrix/*-async
+```
+
+Run the full low-memory matrix directly only on an isolated machine:
+
+```sh
+RUN_COUNT=100 SCENARIOS=balanced-30s-quick bun run bench:low-memory:matrix
+```
+
+Use chunks on a workstation. Chunking preserves progress and avoids OpenCode command timeouts, but it does not reduce each individual run's peak memory.
+
 ## Recommended Profile
 
-Use `scripts/sm-lowmem.sh run-balanced`. It now applies this profile unless a variable is already set:
+Use `bench-tooling/run.sh run-balanced`. It now applies this profile unless a variable is already set:
 
 ```sh
 SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1
@@ -82,10 +118,40 @@ The synthetic Bun probes show small latency improvements on `1.3.14`, not lower 
 ## Rerun Commands
 
 ```sh
-scripts/low-memory-profile-matrix.sh
-scripts/pglite-initial-memory-probe.sh
-scripts/bun-runtime-compare.sh
+bench-tooling/matrix.sh
+bench-tooling/probes/pglite.sh
+bench-tooling/probes/bun-runtime.sh
 ```
+
+For OpenCode or other shells with short command timeouts, launch matrix chunks in the background. The async launcher returns immediately, writes `async.json` with the PID and paths, and the matrix writes partial `summary.md`/`summary.json` after each completed iteration:
+
+```sh
+RUN_COUNT=5 SCENARIOS=balanced-30s-quick bench-tooling/async.sh
+```
+
+The same command through `package.json` is:
+
+```sh
+RUN_COUNT=5 SCENARIOS=balanced-30s-quick bun run bench:low-memory:async
+```
+
+Repeat chunks until the combined row count reaches the target. Then collect them into one structurally readable result:
+
+```sh
+bun bench-tooling/collect.ts \
+  .memory-bench/profile-matrix/combined-balanced-100 \
+  .memory-bench/profile-matrix/*-async
+```
+
+Or through `package.json`:
+
+```sh
+bun run bench:low-memory:collect -- \
+  .memory-bench/profile-matrix/combined-balanced-100 \
+  .memory-bench/profile-matrix/*-async
+```
+
+The collector writes `runs.tsv`, `summary.md`, and `summary.json` in the output directory. Use small chunks plus `COOLDOWN_SECONDS=60` or higher on a workstation; chunking preserves progress but does not lower each individual run's peak memory.
 
 For the recommended 512 MB profile directly:
 
@@ -98,7 +164,7 @@ IDLE_SECONDS=20 \
 POST_SEARCH_IDLE_SECONDS=40 \
 POST_ADD_IDLE_SECONDS=40 \
 WARM_AFTER_READY=1 \
-scripts/memory-bench.sh scenario balanced-30s-512 \
+bench-tooling/bench.sh scenario balanced-30s-512 \
   SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
   SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
   SUPERMEMORY_INGEST_CONCURRENCY=1 \
