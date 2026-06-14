@@ -1,124 +1,107 @@
-# Low-Memory And Balanced Warmup Results
+# Low-Memory Profile Results
 
-## Results Table
+## Recommended Profile
 
-| Scenario | Ready Latency | Peak RSS | Ready-Idle Last | Post-Search Last | Post-Add Last | Warmup Search | First Real Search | What It Proves |
-|---|---:|---:|---:|---:|---:|---:|---:|---|
-| Baseline | `2859 ms` | `1182 MB` | `919 MB` | `1013 MB` | `1107 MB` | n/a | `91 ms` | Current binary blocks startup on embedding prewarm, so first search is fast. |
-| Cold low-memory | `1154 ms` | `1404 MB` | `1020 MB` | `1404 MB` | `1344 MB` | n/a | `1026 ms` | Skipping prewarm makes HTTP ready fast, but first search pays model-load cost. |
-| Balanced warmup | `1180 ms` | `1658 MB` | `1573 MB` | `1591 MB` | `1626 MB` | `940 ms` | `51 ms` | Post-ready background warmup keeps fast HTTP readiness and makes first real search fast if warmup completed. |
+Use `scripts/sm-lowmem.sh run-balanced`. It now applies this profile unless a variable is already set:
 
-## Runtime Comparison Table
+```sh
+SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1
+SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000
+SUPERMEMORY_INGEST_CONCURRENCY=1
+SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2
+SUPERMEMORY_EMBEDDING_RAM_LIMIT=512mb
+SUPERMEMORY_NO_OPEN=1
+SUPERMEMORY_NO_UPDATE_CHECK=1
+```
 
-| Runtime | Probe | Exit Code | Elapsed | Peak RSS | Probe Output |
+This profile starts HTTP before loading the embedding model, runs one authenticated background search after readiness to warm embeddings, keeps the worker hot briefly for fast search, then lets memory drop after idle.
+
+## Best Measured Run
+
+Run artifact: `.memory-bench/profile-matrix/manual-512/runs/20260614-235640-balanced-30s-512`
+
+| Scenario | Ready | Peak RSS | Ready Idle Last/Min | Post Search Last/Min | Post Add Last/Min | Warmup Search | First Real Search | Second Search | Ingest Paused | Shutdown Crash |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---|
+| Balanced 30s, 512 MB ingest cap | `1710 ms` | `1178 MB` | `332 / 332 MB` | `492 / 333 MB` | `328 / 261 MB` | `1290 ms` | `92 ms` | `65 ms` | no | yes |
+
+This was the best practical tradeoff in the local measurements: startup stayed fast, first real search stayed near baseline latency, post-idle RSS dropped substantially, and ingestion completed without the pause seen under a 256 MB ingest cap.
+
+## Profile Matrix
+
+Run artifact: `.memory-bench/profile-matrix/20260614-232143/summary.md`
+
+| Scenario | Ready | Peak RSS | Ready Idle Last/Min | Post Search Last/Min | Post Add Last/Min | Warmup | First Search | Second Search | Shutdown Crash |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| Baseline default | `3097 ms` | `1197 MB` | `541 / 350 MB` | `478 / 390 MB` | `652 / 535 MB` | n/a | `93 ms` | `70 ms` | yes |
+| Cold 15s, 256 MB cap | `1163 ms` | `1723 MB` | `724 / 608 MB` | `1550 / 1401 MB` | `1694 / 1560 MB` | n/a | `1247 ms` | `41 ms` | yes |
+| Balanced 15s quick, 256 MB cap | `1152 ms` | `1696 MB` | `1598 / 1598 MB` | `1131 / 1131 MB` | `363 / 305 MB` | `1175 ms` | `47 ms` | `52 ms` | yes |
+| Balanced 15s late, 256 MB cap | `1160 ms` | `1440 MB` | `815 / 815 MB` | `787 / 736 MB` | `359 / 286 MB` | `1213 ms` | `50 ms` | `49 ms` | yes |
+| Balanced 30s quick, 256 MB cap | `1207 ms` | `1175 MB` | `664 / 526 MB` | `482 / 388 MB` | `672 / 555 MB` | `1348 ms` | `60 ms` | `73 ms` | yes |
+
+The 256 MB ingest cap was too tight in the cold run: the server logged ingestion as paused because it was already above the ingest memory budget. The 512 MB targeted run avoided that while keeping similar peak RSS and lower post-idle RSS.
+
+## PGlite Probe
+
+Run artifact: `.memory-bench/pglite-initial-memory/20260614-235451/summary.md`
+
+| Scenario | Exit | Peak RSS | Ready | Insert | Index | Query | Result |
+|---|---:|---:|---:|---:|---:|---:|---|
+| default | `0` | `1087 MB` | `891 ms` | `29 ms` | `9 ms` | `16 ms` | works |
+| `initialMemory=128` | `0` | `1098 MB` | `911 ms` | `26 ms` | `10 ms` | `17 ms` | works |
+| `initialMemory=128` + low Postgres config | `0` | `1048 MB` | `819 ms` | `27 ms` | `9 ms` | `17 ms` | works |
+| `initialMemory=32/48/64/96` | `124` | `~132 MB` | n/a | n/a | n/a | n/a | fails with LinkError |
+
+PGlite `@electric-sql/pglite@0.5.2` does not accept `initialMemory` below `128 MiB` with the shipped WASM module:
+
+```txt
+LinkError: Memory import env:memory provided a 'size' that is smaller than the module's declared 'initial' import memory size
+```
+
+The low Postgres config probe shaved about `40-50 MB` in isolation, but the self-hosted server source is not present in this checkout, so that needs source-side integration and measurement before it can be claimed for the binary.
+
+## Bun Runtime Probe
+
+Run artifact: `.memory-bench/bun-runtime-compare/20260614-235528/results.jsonl`
+
+| Runtime | Probe | Exit | Elapsed | Peak RSS | Probe Output |
 |---|---|---:|---:|---:|---|
-| Embedded Bun `1.3.4` | Worker smol probe | `0` | `1179 ms` | `65 MB` | `workerReadyMs=10`, `ping1000Ms=1` |
-| Installed Bun `1.3.14` | Worker smol probe | `0` | `1090 ms` | `68 MB` | `workerReadyMs=9`, `ping1000Ms=2` |
-| Embedded Bun `1.3.4` | HTTP loopback probe | `0` | `1080 ms` | `35 MB` | `readyMs=1`, `fetch500Ms=36` |
-| Installed Bun `1.3.14` | HTTP loopback probe | `0` | `1104 ms` | `36 MB` | `readyMs=1`, `fetch500Ms=33` |
+| Embedded Bun `1.3.4` | worker smol | `0` | `1171 ms` | `62 MB` | `workerReadyMs=25`, `ping1000Ms=2` |
+| Installed Bun `1.3.14` | worker smol | `0` | `1057 ms` | `67 MB` | `workerReadyMs=13`, `ping1000Ms=1` |
+| Embedded Bun `1.3.4` | HTTP loopback | `0` | `1173 ms` | `35 MB` | `readyMs=14`, `fetch500Ms=47` |
+| Installed Bun `1.3.14` | HTTP loopback | `0` | `1177 ms` | `36 MB` | `readyMs=6`, `fetch500Ms=38` |
 
-## Baseline
+The synthetic Bun probes show small latency improvements on `1.3.14`, not lower RSS. The actual self-hosted server cannot be tested on newer Bun here because the installed server is a standalone binary embedding Bun `1.3.4`; replacing the runtime requires rebuilding the server from source.
 
-The baseline starts the installed binary normally and measures how it behaves when embeddings are prewarmed before HTTP readiness.
+## Caveats
+
+- Every measured server run still crashed after SIGTERM on embedded Bun `1.3.4`. Request timings are valid, but shutdown reliability is not clean.
+- RSS is noisy on macOS. Use `Last/Min` over longer idle windows instead of a single sample.
+- Balanced warmup is a latency tradeoff, not a permanent-memory reduction. The memory win comes from idle timeout and ingestion limiting after active work finishes.
+- The self-hosted server source is not in this checkout, so PGlite constructor/config changes were tested with an isolated PGlite probe, not inside the product binary.
+
+## Rerun Commands
 
 ```sh
-scripts/sm-lowmem.sh measure-balanced
+scripts/low-memory-profile-matrix.sh
+scripts/pglite-initial-memory-probe.sh
+scripts/bun-runtime-compare.sh
 ```
 
-Internally the baseline benchmark runs the current binary with isolated copied data and no low-memory embedding overrides.
+For the recommended 512 MB profile directly:
 
 ```sh
-scripts/memory-bench.sh scenario sm-balanced-baseline
-```
-
-Result: HTTP readiness is slower, but first search is already warm.
-
-## Cold Low-Memory
-
-Cold low-memory starts HTTP quickly by skipping embedding prewarm.
-
-```sh
-SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
-SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
-SUPERMEMORY_INGEST_CONCURRENCY=1 \
-SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-scripts/memory-bench.sh scenario sm-balanced-cold
-```
-
-Result: HTTP readiness is fast, but first search is slow because it triggers embedding model load.
-
-## Balanced Warmup
-
-Balanced warmup keeps skip-prewarm enabled, waits for HTTP readiness, then sends a background warmup search before measuring the first real search.
-
-```sh
+BENCH_ROOT=.memory-bench/profile-matrix/manual-512 \
+SOURCE_DATA_DIR="$HOME/.supermemory" \
+SAMPLE_INTERVAL_SECONDS=0.25 \
+RUN_VM_MAP=0 \
+IDLE_SECONDS=20 \
+POST_SEARCH_IDLE_SECONDS=40 \
+POST_ADD_IDLE_SECONDS=40 \
 WARM_AFTER_READY=1 \
-SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
-SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
-SUPERMEMORY_INGEST_CONCURRENCY=1 \
-SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-scripts/memory-bench.sh scenario sm-balanced-warm
+scripts/memory-bench.sh scenario balanced-30s-512 \
+  SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1 \
+  SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
+  SUPERMEMORY_INGEST_CONCURRENCY=1 \
+  SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
+  SUPERMEMORY_EMBEDDING_RAM_LIMIT=512mb
 ```
-
-The wrapper command is:
-
-```sh
-scripts/sm-lowmem.sh run-balanced
-```
-
-Result: HTTP readiness stays close to cold low-memory, and first real search becomes fast because the embedding model was warmed in the background.
-
-## What The Code Does
-
-`scripts/memory-bench.sh` now supports post-ready warmup.
-
-```sh
-WARM_AFTER_READY="${WARM_AFTER_READY:-0}"
-
-if [[ "$WARM_AFTER_READY" == "1" ]]; then
-  printf 'background_warmup' > "$label_file"
-  search_once "$port" "$api_key" "$run_dir/warmup-search.json" > "$run_dir/warmup-search.txt" &
-  warmup_pid="$!"
-  wait "$warmup_pid" || true
-fi
-```
-
-`scripts/sm-lowmem.sh run-balanced` launches the server, waits for HTTP readiness, then sends the warmup search.
-
-```sh
-run_balanced() {
-  apply_lowmem_defaults
-  "$server_bin" &
-  pid="$!"
-  wait_for_http_ready "$port" "$pid"
-  warm_search "$port" &
-  wait "$pid"
-}
-```
-
-The warmup request is a normal authenticated search that forces the same embedding path a real first search would use.
-
-```sh
-curl -sS -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port/v3/search" \
-  -H "Authorization: Bearer $api_key" \
-  -H 'Content-Type: application/json' \
-  -d '{"q":"supermemory local embedding warmup","containerTag":"__sm_warmup__"}'
-```
-
-`scripts/bun-runtime-compare.sh` compares the embedded Bun runtime with the installed Bun runtime.
-
-```sh
-BUN_BE_BUN=1 "$SERVER_BIN" --version
-bun --version
-```
-
-It then runs the same worker and HTTP probes through both runtimes.
-
-```sh
-BUN_BE_BUN=1 "$SERVER_BIN" "$script"
-"$LATEST_BUN" "$script"
-```
-
-## Conclusion
-
-Balanced warmup is the useful runtime behavior change available without private server source. It moves embedding load out of the first real search path while preserving fast HTTP readiness. It does not reduce permanent RSS; it intentionally warms the embedding model earlier, so memory rises after startup.
