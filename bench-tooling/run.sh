@@ -20,7 +20,7 @@ Environment:
   SUPERMEMORY_PORT         Port used by the server in run mode.
   SUPERMEMORY_DATA_DIR     Data directory used by the server in run mode.
   SUPERMEMORY_EMBEDDING_RAM_LIMIT
-                          Ingest memory headroom. Defaults to 512mb in this profile.
+                          Ingest memory headroom. Defaults to 1gb in this profile.
   SOURCE_DATA_DIR          Seed data directory for measure mode. Defaults to ~/.supermemory.
   IDLE_SECONDS             Ready-idle sampling time for measure mode.
 
@@ -55,7 +55,7 @@ apply_lowmem_defaults() {
   set_default_env SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS 30000
   set_default_env SUPERMEMORY_INGEST_CONCURRENCY 1
   set_default_env SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE 2
-  set_default_env SUPERMEMORY_EMBEDDING_RAM_LIMIT 512mb
+  set_default_env SUPERMEMORY_EMBEDDING_RAM_LIMIT 1gb
   set_default_env SUPERMEMORY_NO_OPEN 1
   set_default_env SUPERMEMORY_NO_UPDATE_CHECK 1
 }
@@ -331,7 +331,7 @@ run_measurement() {
     SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
     SUPERMEMORY_INGEST_CONCURRENCY=1 \
     SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-    SUPERMEMORY_EMBEDDING_RAM_LIMIT=512mb)"
+    SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb)"
   lowmem_dir="$(printf '%s\n' "$lowmem_output" | tail -n 1)"
 
   printf '\n'
@@ -431,7 +431,7 @@ run_balanced_measurement() {
     SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
     SUPERMEMORY_INGEST_CONCURRENCY=1 \
     SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-    SUPERMEMORY_EMBEDDING_RAM_LIMIT=512mb)"
+    SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb)"
   cold_dir="$(printf '%s\n' "$cold_output" | tail -n 1)"
 
   printf 'Running balanced warmup benchmark...\n'
@@ -441,7 +441,7 @@ run_balanced_measurement() {
     SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 \
     SUPERMEMORY_INGEST_CONCURRENCY=1 \
     SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 \
-    SUPERMEMORY_EMBEDDING_RAM_LIMIT=512mb)"
+    SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb)"
   balanced_dir="$(printf '%s\n' "$balanced_output" | tail -n 1)"
 
   printf '\n'
