@@ -330,7 +330,7 @@ run_suite() {
   run_scenario idle-15s SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=15000 >> "$results_file" || true
   run_scenario idle-30s SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=30000 >> "$results_file" || true
   run_scenario recycle-1 SUPERMEMORY_LOCAL_EMBEDDING_MAX_BATCHES_BEFORE_RECYCLE=1 >> "$results_file" || true
-  run_scenario low-batch SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 SUPERMEMORY_INGEST_CONCURRENCY=1 SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb >> "$results_file" || true
+  run_scenario low-batch SUPERMEMORY_LOCAL_EMBEDDING_BATCH_SIZE=2 SUPERMEMORY_EMBEDDING_RAM_LIMIT=1gb >> "$results_file" || true
   printf '%s\n' "$results_file"
 }
 
