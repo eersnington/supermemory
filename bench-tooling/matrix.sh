@@ -11,7 +11,7 @@ RUN_VM_MAP="${RUN_VM_MAP:-0}"
 ADD_COUNT="${ADD_COUNT:-1}"
 DOC_REPEAT_COUNT="${DOC_REPEAT_COUNT:-120}"
 RUN_COUNT="${RUN_COUNT:-1}"
-SCENARIOS="${SCENARIOS:-stock-30s,optimized-30s}"
+SCENARIOS="${SCENARIOS:-stock-30s,optimized-cold-30s,optimized-background-30s,optimized-blocking-30s}"
 COOLDOWN_SECONDS="${COOLDOWN_SECONDS:-0}"
 WRITE_PARTIAL_SUMMARY="${WRITE_PARTIAL_SUMMARY:-1}"
 MATRIX_RUN_ROOT="${MATRIX_RUN_ROOT:-}"
@@ -144,7 +144,10 @@ OPTIMIZED_30_ENV=(
 )
 
 if should_run stock-30s; then run_case stock-30s 20 40 40 0; fi
-if should_run optimized-30s; then run_case optimized-30s 20 40 40 1 "${OPTIMIZED_30_ENV[@]}"; fi
+if should_run optimized-cold-30s; then run_case optimized-cold-30s 20 40 40 0 "${OPTIMIZED_30_ENV[@]}"; fi
+if should_run optimized-background-30s; then run_case optimized-background-30s 20 40 40 background "${OPTIMIZED_30_ENV[@]}"; fi
+if should_run optimized-blocking-30s; then run_case optimized-blocking-30s 20 40 40 blocking "${OPTIMIZED_30_ENV[@]}"; fi
+if should_run optimized-30s; then run_case optimized-30s 20 40 40 blocking "${OPTIMIZED_30_ENV[@]}"; fi
 if should_run baseline-default; then run_case baseline-default 12 30 30 0; fi
 if should_run cold-15s; then run_case cold-15s 12 30 30 0 "${OPTIMIZED_15_ENV[@]}"; fi
 if should_run balanced-15s-quick; then run_case balanced-15s-quick 8 30 30 1 "${OPTIMIZED_15_ENV[@]}"; fi

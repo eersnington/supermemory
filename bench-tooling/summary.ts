@@ -47,6 +47,7 @@ export type ScenarioAggregate = {
 	metrics: Record<string, NumericStats>
 	envText: string
 	idleWindows: string
+	warmAfterReady: string
 }
 
 const CRASH_PATTERN = /panic\(main thread\)|oh no: Bun has crashed/
@@ -191,6 +192,7 @@ export function aggregateRows(rows: RunRow[]): ScenarioAggregate[] {
 			.length,
 		addSuccesses: group.filter((row) => row.addStatus === "200").length,
 		envText: group[0]?.envText ?? "",
+		warmAfterReady: group[0]?.warmAfterReady ?? "n/a",
 		idleWindows: group[0]
 			? `ready ${group[0].idleSeconds}s, post-search ${group[0].postSearchIdleSeconds}s, post-add ${group[0].postAddIdleSeconds}s`
 			: "n/a",
@@ -285,10 +287,10 @@ export function renderMarkdown(options: {
 	}
 
 	md += "\n## Scenario Settings\n\n"
-	md += "| Scenario | Idle Windows | Env |\n"
-	md += "|---|---|---|\n"
+	md += "| Scenario | Idle Windows | Warm After Ready | Env |\n"
+	md += "|---|---|---|---|\n"
 	for (const aggregate of options.aggregates) {
-		md += `| ${aggregate.label} | ${aggregate.idleWindows} | ${compactEnv(aggregate.envText)} |\n`
+		md += `| ${aggregate.label} | ${aggregate.idleWindows} | ${aggregate.warmAfterReady} | ${compactEnv(aggregate.envText)} |\n`
 	}
 
 	if (options.rows.length <= 50) {

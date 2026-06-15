@@ -26,6 +26,7 @@ Examples:
   bench-tooling/bench.sh scenario idle-15s SUPERMEMORY_LOCAL_EMBEDDING_IDLE_TIMEOUT_MS=15000
   ADD_COUNT=20 DOC_REPEAT_COUNT=300 bench-tooling/bench.sh scenario add-20-large
   WARM_AFTER_READY=1 bench-tooling/bench.sh scenario balanced-warm SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1
+  WARM_AFTER_READY=background bench-tooling/bench.sh scenario background-warm SUPERMEMORY_SKIP_EMBEDDING_PREWARM=1
   bench-tooling/bench.sh suite
 
 Outputs are written to .memory-bench/runs/<timestamp>-<name>/.
@@ -279,11 +280,16 @@ run_scenario() {
     vmmap -summary "$pid" > "$run_dir/vmmap-ready.txt" 2>&1 || true
   fi
 
-  if [[ "$WARM_AFTER_READY" == "1" ]]; then
+  local warmup_pid=""
+  if [[ "$WARM_AFTER_READY" == "1" || "$WARM_AFTER_READY" == "blocking" ]]; then
     printf 'background_warmup' > "$label_file"
     search_once "$port" "$api_key" "$run_dir/warmup-search.json" > "$run_dir/warmup-search.txt" &
     warmup_pid="$!"
     wait "$warmup_pid" || true
+  elif [[ "$WARM_AFTER_READY" == "background" || "$WARM_AFTER_READY" == "nonblocking" ]]; then
+    printf 'background_warmup' > "$label_file"
+    search_once "$port" "$api_key" "$run_dir/warmup-search.json" > "$run_dir/warmup-search.txt" &
+    warmup_pid="$!"
   fi
 
   printf 'ready_idle' > "$label_file"
@@ -313,6 +319,9 @@ run_scenario() {
   fi
 
   printf 'shutdown' > "$label_file"
+  if [[ -n "$warmup_pid" ]]; then
+    wait "$warmup_pid" 2>/dev/null || true
+  fi
   kill "$pid" 2>/dev/null || true
   wait "$pid" 2>/dev/null || true
   wait "$sampler_pid" 2>/dev/null || true
