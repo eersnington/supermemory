@@ -51,3 +51,22 @@ RUN_COUNT=5 READY_SETTLE_MS=2000 bun run bench:patch:compare
 ```
 
 The comparison should fail if patched startup is not materially faster, if first search regresses after the settle window, or if logs show the patch changed stock workload defaults.
+
+## Binary Inspection
+
+Use path-independent inspection commands. Set a `SERVER_BIN` variable first:
+
+```sh
+SERVER_BIN=/path/to/supermemory-server
+```
+
+Then inspect the binary identity and bundled startup code:
+
+```sh
+file "$SERVER_BIN"
+shasum -a 256 "$SERVER_BIN"
+"$SERVER_BIN" --version
+strings -a "$SERVER_BIN" | rg -n "SUPERMEMORY_SKIP_EMBEDDING_PREWARM|async function hX2|Bun\.serve|\[ingest\] memory limit|local embeddings"
+```
+
+For the exact startup span this patcher edits, use the `Inspecting A Binary` section in `README.md`. Do not hardcode local machine paths in docs or commands.
