@@ -11,7 +11,9 @@ stock:   migrations -> await embedding prewarm -> Bun.serve -> ready -> ingest b
 patched: migrations -> Bun.serve -> ready -> patch label -> background embedding warmup -> ingest baseline
 ```
 
-It does not change the embedding model, embedding batch size, ingest concurrency, or `SUPERMEMORY_EMBEDDING_RAM_LIMIT`.
+It does not change the embedding model, embedding batch size, ingest concurrency, `SUPERMEMORY_EMBEDDING_RAM_LIMIT`, local embedding idle timeout, or native-worker shutdown behavior.
+
+Recent process-tree RSS validation did not show a stable memory win from changing the idle-timeout or native-worker shutdown behavior, so those changes are intentionally not part of the patch.
 
 The patched server prints this at startup:
 
@@ -35,6 +37,10 @@ bun run bench:patch:restore ~/.supermemory/bin/supermemory-server.stock-5a5932a9
 
 ```sh
 RUN_COUNT=5 READY_SETTLE_MS=2000 bun run bench:patch:compare
+```
+
+```sh
+RUN_COUNT=5 READY_SETTLE_MS=2000 POST_SEARCH_IDLE_MS=35000 bun run bench:patch:compare
 ```
 
 ## Inspecting A Binary
@@ -144,3 +150,9 @@ patched:
 - patched first search after the settle window regresses too much
 - patched logs do not show the patch label after readiness
 - patched logs do not preserve the stock model, worker, batch, and ingest defaults
+
+RSS samples are process-tree samples. When `POST_SEARCH_IDLE_MS` is set, the comparison also records post-search idle RSS. Set `EXPECT_IDLE_RSS_WIN_MB` only when intentionally testing a candidate memory optimization.
+
+## CLI Recommendations
+
+See `cli-improvements.md` for upstream CLI recommendations based on these measurements. The main constraint is to keep `supermemory local` embedded by default while making persistent PGlite, external Postgres, diagnostics, and startup warmup behavior explicit options.

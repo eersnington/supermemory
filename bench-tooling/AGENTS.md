@@ -31,6 +31,7 @@ Do not change stock defaults to make benchmarks look better:
 - keep embedding batch behavior
 - keep ingest concurrency
 - keep `SUPERMEMORY_EMBEDDING_RAM_LIMIT` headroom
+- keep local embedding idle-timeout and native-worker shutdown behavior unless a process-tree RSS benchmark proves a stable win
 
 ## Files
 
@@ -50,7 +51,15 @@ Use:
 RUN_COUNT=5 READY_SETTLE_MS=2000 bun run bench:patch:compare
 ```
 
+For memory checks, use process-tree RSS with an idle window:
+
+```sh
+RUN_COUNT=5 READY_SETTLE_MS=2000 POST_SEARCH_IDLE_MS=35000 bun run bench:patch:compare
+```
+
 The comparison should fail if patched startup is not materially faster, if first search regresses after the settle window, or if logs show the patch changed stock workload defaults.
+
+Only set `EXPECT_IDLE_RSS_WIN_MB` when testing a deliberate memory optimization. Do not keep a binary behavior change unless it passes the startup/search/log assertions and shows a stable p50 RSS win.
 
 ## Binary Inspection
 

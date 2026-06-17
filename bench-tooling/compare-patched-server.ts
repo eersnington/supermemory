@@ -16,6 +16,7 @@ type CaseResult = {
 	firstSearchMs: number
 	firstSearchStatus: number
 	peakRssMb: number | null
+	postSearchIdleRssMb: number | null
 	log: string
 }
 
@@ -23,6 +24,7 @@ type Aggregate = {
 	readyP50: number
 	firstSearchP50: number
 	peakRssP50: number | null
+	postSearchIdleRssP50: number | null
 }
 
 type SerializableCaseResult = Omit<CaseResult, "log">
@@ -45,6 +47,9 @@ const runCount = positiveIntEnv("RUN_COUNT", 5)
 const readySettleMs = nonNegativeIntEnv("READY_SETTLE_MS", 2000)
 const readyTimeoutMs = positiveIntEnv("READY_TIMEOUT_MS", 45_000)
 const sampleIntervalMs = positiveIntEnv("SAMPLE_INTERVAL_MS", 250)
+const postSearchIdleMs = nonNegativeIntEnv("POST_SEARCH_IDLE_MS", 0)
+const expectIdleRssWinMb = nonNegativeIntEnv("EXPECT_IDLE_RSS_WIN_MB", 0)
+const expectPatchedIdleShutdown = boolEnv("EXPECT_PATCHED_IDLE_SHUTDOWN", false)
 const sourceDataDir = resolvePath(
 	process.env.SOURCE_DATA_DIR ?? join(homedir(), ".supermemory"),
 )
@@ -61,6 +66,10 @@ Environment:
   SOURCE_DATA_DIR        Seed data directory. Defaults to ~/.supermemory.
   RUN_COUNT              Paired stock/patched iterations. Defaults to 5.
   READY_SETTLE_MS        Wait after HTTP ready before first search. Defaults to 2000.
+  POST_SEARCH_IDLE_MS    Wait after first search before recording idle RSS. Defaults to 0.
+  EXPECT_IDLE_RSS_WIN_MB Require patched post-search idle RSS p50 to beat stock by this many MB.
+  EXPECT_PATCHED_IDLE_SHUTDOWN
+                          Require patched logs to show embedding worker idle shutdown.
   OUT_ROOT               Output root. Defaults to .memory-bench/patch-compare.
 `
 }
@@ -83,6 +92,14 @@ function nonNegativeIntEnv(name: string, fallback: number): number {
 		throw new Error(`${name} must be a non-negative integer`)
 	}
 	return parsed
+}
+
+function boolEnv(name: string, fallback: boolean): boolean {
+	const raw = process.env[name]
+	if (!raw) return fallback
+	if (["1", "true", "yes"].includes(raw.toLowerCase())) return true
+	if (["0", "false", "no"].includes(raw.toLowerCase())) return false
+	throw new Error(`${name} must be true or false`)
 }
 
 function resolvePath(path: string): string {
@@ -152,14 +169,45 @@ function randomPort(): number {
 	return 19_000 + Math.floor(Math.random() * 20_000)
 }
 
-function rssMb(pid: number): number | null {
+function childPids(pid: number): number[] {
+	const result = spawnSync("pgrep", ["-P", String(pid)], { encoding: "utf8" })
+	if (result.status !== 0) return []
+	return result.stdout
+		.trim()
+		.split(/\s+/)
+		.map((value) => Number(value))
+		.filter((value) => Number.isInteger(value) && value > 0)
+}
+
+function processTreePids(rootPid: number): number[] {
+	const seen = new Set<number>()
+	const pending = [rootPid]
+	while (pending.length > 0) {
+		const pid = pending.pop()
+		if (!pid || seen.has(pid)) continue
+		seen.add(pid)
+		pending.push(...childPids(pid))
+	}
+	return [...seen]
+}
+
+function pidRssKb(pid: number): number | null {
 	const result = spawnSync("ps", ["-o", "rss=", "-p", String(pid)], {
 		encoding: "utf8",
 	})
 	if (result.status !== 0) return null
 	const kb = Number(result.stdout.trim())
 	if (!Number.isFinite(kb) || kb <= 0) return null
-	return Math.round(kb / 1024)
+	return kb
+}
+
+function rssMb(pid: number): number | null {
+	let totalKb = 0
+	for (const treePid of processTreePids(pid)) {
+		const kb = pidRssKb(treePid)
+		if (kb != null) totalKb += kb
+	}
+	return totalKb > 0 ? Math.round(totalKb / 1024) : null
 }
 
 async function waitForReady(port: number, processPid: number): Promise<number> {
@@ -273,6 +321,11 @@ async function runCase(options: {
 		await Bun.sleep(readySettleMs)
 		const apiKey = await readApiKey(dataDir)
 		const firstSearch = await searchOnce(port, apiKey)
+		let postSearchIdleRssMb: number | null = null
+		if (postSearchIdleMs > 0) {
+			await Bun.sleep(postSearchIdleMs)
+			postSearchIdleRssMb = child.pid ? rssMb(child.pid) : null
+		}
 
 		child.kill("SIGTERM")
 		await new Promise((resolve) => child.once("close", resolve))
@@ -288,6 +341,7 @@ async function runCase(options: {
 			firstSearchMs: firstSearch.latencyMs,
 			firstSearchStatus: firstSearch.status,
 			peakRssMb,
+			postSearchIdleRssMb,
 			log,
 		}
 		await writeFile(
@@ -316,10 +370,16 @@ function aggregate(results: CaseResult[]): Aggregate {
 	const rssValues = results
 		.map((result) => result.peakRssMb)
 		.filter((value): value is number => value != null)
+	const postSearchIdleRssValues = results
+		.map((result) => result.postSearchIdleRssMb)
+		.filter((value): value is number => value != null)
 	return {
 		readyP50: p50(results.map((result) => result.readyMs)),
 		firstSearchP50: p50(results.map((result) => result.firstSearchMs)),
 		peakRssP50: rssValues.length ? p50(rssValues) : null,
+		postSearchIdleRssP50: postSearchIdleRssValues.length
+			? p50(postSearchIdleRssValues)
+			: null,
 	}
 }
 
@@ -382,6 +442,25 @@ function validateResults(
 		)
 	}
 
+	if (expectIdleRssWinMb > 0) {
+		if (
+			stockAggregate.postSearchIdleRssP50 == null ||
+			patchedAggregate.postSearchIdleRssP50 == null
+		) {
+			throw new Error(
+				"cannot assert idle RSS win without post-search idle RSS samples",
+			)
+		}
+		const idleRssWinMb =
+			stockAggregate.postSearchIdleRssP50 -
+			patchedAggregate.postSearchIdleRssP50
+		if (idleRssWinMb < expectIdleRssWinMb) {
+			throw new Error(
+				`patched post-search idle RSS p50 did not beat stock by ${expectIdleRssWinMb}MB: stock=${stockAggregate.postSearchIdleRssP50}MB patched=${patchedAggregate.postSearchIdleRssP50}MB`,
+			)
+		}
+	}
+
 	for (const result of patched) {
 		assertLogOrder(
 			result.log,
@@ -408,6 +487,13 @@ function validateResults(
 		assertLogContains(result.log, "2 concurrent", "patched")
 		assertLogContains(result.log, "batch(es) of", "patched")
 		assertLogContains(result.log, "8 on 1 worker", "patched")
+		if (expectPatchedIdleShutdown) {
+			assertLogContains(
+				result.log,
+				"[embeddings] shutting down 1 idle embedding worker(s)",
+				"patched",
+			)
+		}
 	}
 
 	for (const result of stock) {
@@ -453,6 +539,8 @@ function renderMarkdown(options: {
 		`Patched sha256: \`${options.patchedHash}\``,
 		`Runs per case: \`${runCount}\``,
 		`Ready settle: \`${readySettleMs}ms\``,
+		`Post-search idle: \`${postSearchIdleMs}ms\``,
+		"RSS scope: server process tree",
 		"",
 		"## Verdict",
 		"",
@@ -460,20 +548,20 @@ function renderMarkdown(options: {
 		"",
 		"## Aggregate",
 		"",
-		"| Case | Ready p50 | First Search p50 | Peak RSS p50 |",
-		"|---|---:|---:|---:|",
-		`| Stock | ${options.stockAggregate.readyP50} ms | ${options.stockAggregate.firstSearchP50} ms | ${options.stockAggregate.peakRssP50 ?? "n/a"} MB |`,
-		`| Patched | ${options.patchedAggregate.readyP50} ms | ${options.patchedAggregate.firstSearchP50} ms | ${options.patchedAggregate.peakRssP50 ?? "n/a"} MB |`,
+		"| Case | Ready p50 | First Search p50 | Peak RSS p50 | Post-Search Idle RSS p50 |",
+		"|---|---:|---:|---:|---:|",
+		`| Stock | ${options.stockAggregate.readyP50} ms | ${options.stockAggregate.firstSearchP50} ms | ${options.stockAggregate.peakRssP50 ?? "n/a"} MB | ${options.stockAggregate.postSearchIdleRssP50 ?? "n/a"} MB |`,
+		`| Patched | ${options.patchedAggregate.readyP50} ms | ${options.patchedAggregate.firstSearchP50} ms | ${options.patchedAggregate.peakRssP50 ?? "n/a"} MB | ${options.patchedAggregate.postSearchIdleRssP50 ?? "n/a"} MB |`,
 		"",
 		"## Individual Runs",
 		"",
-		"| Case | Iteration | Ready | First Search | Peak RSS | Run Dir |",
-		"|---|---:|---:|---:|---:|---|",
+		"| Case | Iteration | Ready | First Search | Peak RSS | Post-Search Idle RSS | Run Dir |",
+		"|---|---:|---:|---:|---:|---:|---|",
 	]
 
 	for (const result of [...options.stock, ...options.patched]) {
 		lines.push(
-			`| ${result.caseName} | ${result.iteration} | ${result.readyMs} ms | ${result.firstSearchMs} ms | ${result.peakRssMb ?? "n/a"} MB | \`${result.runDir}\` |`,
+			`| ${result.caseName} | ${result.iteration} | ${result.readyMs} ms | ${result.firstSearchMs} ms | ${result.peakRssMb ?? "n/a"} MB | ${result.postSearchIdleRssMb ?? "n/a"} MB | \`${result.runDir}\` |`,
 		)
 	}
 
@@ -487,6 +575,14 @@ function renderMarkdown(options: {
 		"- Patched startup loads local embeddings after readiness and records the ingest baseline after warmup.",
 		"- Stock defaults for model, pool size, ingest concurrency, and batch size remain visible in patched logs.",
 	)
+	if (expectIdleRssWinMb > 0) {
+		lines.push(
+			`- Patched post-search idle RSS p50 beats stock by at least ${expectIdleRssWinMb}MB.`,
+		)
+	}
+	if (expectPatchedIdleShutdown) {
+		lines.push("- Patched logs show embedding worker idle shutdown.")
+	}
 
 	return `${lines.join("\n")}\n`
 }
@@ -507,14 +603,15 @@ async function main(): Promise<void> {
 			`stock binary must be unpatched, got state=${stockState.state}: ${stockBin}`,
 		)
 	}
-
 	const patchedBin = join(runRoot, "bin", "supermemory-server-patched")
 	await mkdir(dirname(patchedBin), { recursive: true })
 	createPatchedBinary(stockBin, patchedBin)
 
 	const patchedState = checkBinaryState(patchedBin)
 	if (patchedState.state !== "patched" || !patchedState.patchLabel) {
-		throw new Error("generated patched binary is not labeled as patched")
+		throw new Error(
+			`generated patched binary has unexpected state: state=${patchedState.state} label=${patchedState.patchLabel}`,
+		)
 	}
 
 	const stockHash = sha256(await readFile(stockBin))
