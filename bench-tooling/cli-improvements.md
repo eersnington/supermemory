@@ -14,6 +14,28 @@ supermemory local -> embedded PGlite + pgvector + local embeddings
 
 Changing from `memory://` PGlite to persistent PGlite storage would not inherently require a separate Postgres install. PGlite is still embedded. The hard part is preserving the current encrypted local-storage/snapshot behavior while reducing memory pressure.
 
+## Rust-Native Implementation Track
+
+If the CLI/server is rebuilt in Rust, do not reinterpret that as a custom database, custom vector index, or custom embedding engine. Use Rust-native equivalents for the same responsibilities and preserve Supermemory's API/domain behavior.
+
+| Current Responsibility | Rust-Native Equivalent | Do Not Do |
+| :--- | :--- | :--- |
+| HTTP server | `axum`, `hyper`, or `poem` | Change the API contract |
+| Request validation | `serde`, `schemars`, `validator`, or generated OpenAPI types | Drift from existing request/response shapes |
+| Postgres access | `sqlx`, `tokio-postgres`, or `diesel` | Reimplement Postgres semantics |
+| Vector search | Postgres + `pgvector` | Build a bespoke vector DB for local mode |
+| Embeddings | ONNX Runtime via `ort` plus Hugging Face `tokenizers` | Reimplement model/tokenizer math |
+| Local config/CLI | `clap`, `figment`, `directories`, `tracing` | Hide important runtime knobs |
+| Observability | `tracing`, `tracing-subscriber`, optional OpenTelemetry | Rely only on ad hoc logs |
+
+The main expected memory win from Rust is removing Bun/JSC/WebKit runtime overhead from the local server process. The embedding model and Postgres/pgvector still consume memory because those jobs still have to exist.
+
+Keep the migration path behavior-first:
+
+```txt
+same API -> same auth/local identity -> same schema/migrations -> same embedding dimensions -> same search behavior
+```
+
 ## Add Storage Modes
 
 Expose storage as an explicit CLI choice:
